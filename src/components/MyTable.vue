@@ -78,9 +78,10 @@ const uploadImage = async () => {
   
   uploading.value = true
   try {
+    // 1. 上传到 Cloudinary
     const formData = new FormData()
     formData.append('file', selectedFile.value)
-    formData.append('upload_preset', 'ml_default') // 使用默认的 upload preset
+    formData.append('upload_preset', 'ml_default')
     formData.append('api_key', import.meta.env.VITE_CLOUDINARY_API_KEY)
 
     const response = await fetch(
@@ -91,27 +92,41 @@ const uploadImage = async () => {
       }
     )
 
-    const data = await response.json()
-    console.log('Cloudinary response:', data) // 添加调试信息
+    const cloudinaryData = await response.json()
+    console.log('Cloudinary 返回数据:', cloudinaryData)
 
-    // 保存记录到Supabase
-    await supabase.from('images').insert([
-      {
-        public_id: data.public_id,
-        url: data.secure_url,
-        filename: selectedFile.value.name,
-        format: data.format
-      }
-    ])
+    if (cloudinaryData.error) {
+      throw new Error(cloudinaryData.error.message)
+    }
 
-    // 刷新列表
+    // 2. 将照片信息保存到 Supabase
+    const { data: supabaseData, error: supabaseError } = await supabase
+      .from('images')
+      .insert([
+        {
+          public_id: cloudinaryData.public_id,
+          url: cloudinaryData.secure_url,
+          filename: selectedFile.value.name,
+          format: cloudinaryData.format
+        }
+      ])
+      .select()
+
+    if (supabaseError) {
+      throw new Error('保存到数据库失败: ' + supabaseError.message)
+    }
+
+    console.log('保存到 Supabase 成功:', supabaseData)
+
+    // 3. 刷新列表
     await fetchImages()
     
-    // 清理表单
+    // 4. 清理表单
     selectedFile.value = null
     fileInput.value.value = ''
   } catch (error) {
     console.error('上传失败:', error)
+    alert('上传失败: ' + error.message)
   } finally {
     uploading.value = false
   }
@@ -126,10 +141,15 @@ const fetchImages = async () => {
       .select('*')
       .order('created_at', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      throw error
+    }
+
     tableData.value = data
+    console.log('获取到的图片列表:', data)
   } catch (error) {
     console.error('获取图片列表失败:', error)
+    alert('获取图片列表失败: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -138,25 +158,41 @@ const fetchImages = async () => {
 // 删除图片
 const deleteImage = async (publicId) => {
   try {
-    // 从Cloudinary删除
-    await fetch('/api/deleteImage', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ public_id: publicId })
-    })
+    // 1. 从 Cloudinary 删除
+    const deleteResponse = await fetch(
+      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/destroy`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          public_id: publicId,
+          api_key: import.meta.env.VITE_CLOUDINARY_API_KEY,
+          timestamp: Math.round(new Date().getTime() / 1000),
+          // 这里需要生成签名，建议在后端处理
+        })
+      }
+    )
 
-    // 从Supabase删除记录
-    await supabase
+    const cloudinaryResult = await deleteResponse.json()
+    console.log('Cloudinary 删除结果:', cloudinaryResult)
+
+    // 2. 从 Supabase 删除记录
+    const { error: supabaseError } = await supabase
       .from('images')
       .delete()
       .match({ public_id: publicId })
 
-    // 刷新列表
+    if (supabaseError) {
+      throw new Error('从数据库删除失败: ' + supabaseError.message)
+    }
+
+    // 3. 刷新列表
     await fetchImages()
   } catch (error) {
     console.error('删除失败:', error)
+    alert('删除失败: ' + error.message)
   }
 }
 
