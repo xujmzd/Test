@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cloudinary/url-gen": "^1.21.0",
+    "@cloudinary/vue": "^1.13.0",
     "@supabase/supabase-js": "^2.x.x",
     "pinia": "^2.x.x",
     "vue": "^3.x.x",
@@ -18,4 +20,4 @@
     "@vitejs/plugin-vue": "^4.x.x",
     "vite": "^4.x.x"
   }
-} 
+}
