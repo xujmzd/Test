@@ -2,11 +2,12 @@
   <div class="my-table">
     <h2>我的表格内容</h2>
     
-    <!-- 环境信息 -->
-    <div v-if="isDevelopment" class="env-info">
+    <!-- 环境信息 - 在所有环境都显示 -->
+    <div class="env-info">
       <p>当前环境: {{ currentMode }}</p>
       <p>Supabase URL: {{ hasSupabaseUrl ? '已配置' : '未配置' }}</p>
       <p>Supabase Key: {{ hasSupabaseKey ? '已配置' : '未配置' }}</p>
+      <p>组件状态: {{ componentStatus }}</p>
     </div>
     
     <!-- 加载状态 -->
@@ -47,24 +48,36 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTableStore } from '../stores/table'
 
 const store = useTableStore()
 const { tableData, loading, error } = storeToRefs(store)
+const componentStatus = ref('初始化')
 
 // 环境变量相关的计算属性
 const isDevelopment = computed(() => import.meta.env.MODE === 'development')
 const currentMode = computed(() => import.meta.env.MODE)
-const hasSupabaseUrl = computed(() => !!import.meta.env.VITE_SUPABASE_URL)
-const hasSupabaseKey = computed(() => !!import.meta.env.VITE_SUPABASE_ANON_KEY)
+const hasSupabaseUrl = computed(() => {
+  const hasUrl = !!import.meta.env.VITE_SUPABASE_URL
+  console.log('Supabase URL 检查:', hasUrl)
+  return hasUrl
+})
+const hasSupabaseKey = computed(() => {
+  const hasKey = !!import.meta.env.VITE_SUPABASE_ANON_KEY
+  console.log('Supabase Key 检查:', hasKey)
+  return hasKey
+})
 
 const retryFetch = () => {
+  componentStatus.value = '正在重试获取数据...'
   store.fetchTableData()
 }
 
 onMounted(() => {
+  console.log('MyTable 组件已挂载')
+  componentStatus.value = '组件已挂载，正在获取数据...'
   store.fetchTableData()
 })
 </script>

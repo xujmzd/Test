@@ -15,11 +15,15 @@ window.addEventListener('unhandledrejection', function(event) {
 })
 
 // 环境变量检查
-console.log('环境变量检查:')
-console.log('VITE_SUPABASE_URL 是否存在:', !!import.meta.env.VITE_SUPABASE_URL)
+console.log('=== 应用启动检查 ===')
+console.log('当前环境:', import.meta.env.MODE)
+console.log('BASE_URL:', import.meta.env.BASE_URL)
+console.log('DEV:', import.meta.env.DEV)
+console.log('PROD:', import.meta.env.PROD)
+console.log('SSR:', import.meta.env.SSR)
+console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL)
 console.log('VITE_SUPABASE_ANON_KEY 是否存在:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
-console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
-console.log('Supabase 连接状态:', !!supabase)
+console.log('Supabase 实例:', !!supabase)
 
 const app = createApp(App)
 
@@ -31,4 +35,7 @@ app.config.errorHandler = (err, vm, info) => {
 
 app.use(createPinia())
 app.use(router)
-app.mount('#app') 
+
+// 添加挂载检查
+app.mount('#app')
+console.log('=== Vue 应用已挂载 ===') 

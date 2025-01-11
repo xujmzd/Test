@@ -11,23 +11,26 @@ export const useTableStore = defineStore('table', {
   
   actions: {
     async fetchTableData() {
+      console.log('=== 开始获取数据 ===')
       this.loading = true
       this.error = null
       
       try {
-        console.log('开始获取数据...')
+        console.log('Supabase 实例检查:', !!supabase)
+        console.log('开始数据库查询...')
         
-        // 直接获取数据
         const { data, error } = await supabase
           .from('test1')
           .select('*')
+        
+        console.log('查询结果:', { data, error })
         
         if (error) {
           throw error
         }
         
         this.tableData = data || []
-        console.log('获取到数据:', this.tableData)
+        console.log('数据已更新:', this.tableData)
         
         if (data && data.length === 0) {
           console.log('查询成功但无数据')
@@ -47,6 +50,7 @@ export const useTableStore = defineStore('table', {
         }
       } finally {
         this.loading = false
+        console.log('=== 数据获取结束 ===')
       }
     }
   }
