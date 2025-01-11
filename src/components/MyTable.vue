@@ -1,17 +1,17 @@
 <template>
   <div class="my-table">
-    <h2>我的表格内容</h2>
+    <h2>我的媒体内容</h2>
     
     <!-- 上传组件 -->
     <div class="upload-section">
       <input 
         type="file" 
         @change="handleFileUpload" 
-        accept="image/*"
+        accept="image/*,video/*"
         ref="fileInput"
       >
-      <button @click="uploadImage" :disabled="!selectedFile || uploading">
-        {{ uploading ? '上传中...' : '上传图片' }}
+      <button @click="uploadMedia" :disabled="!selectedFile || uploading">
+        {{ uploading ? '上传中...' : '上传文件' }}
       </button>
     </div>
 
@@ -19,7 +19,8 @@
     <table v-if="tableData.length">
       <thead>
         <tr>
-          <th>图片</th>
+          <th>预览</th>
+          <th>类型</th>
           <th>文件名</th>
           <th>URL</th>
           <th>上传时间</th>
@@ -29,17 +30,27 @@
       <tbody>
         <tr v-for="(item, index) in tableData" :key="index">
           <td>
+            <!-- 图片预览 -->
             <img 
+              v-if="isImage(item.format)"
               :src="item.url" 
               :alt="item.filename"
               class="thumbnail"
             >
+            <!-- 视频预览 -->
+            <video
+              v-else-if="isVideo(item.format)"
+              :src="item.url"
+              class="thumbnail"
+              controls
+            ></video>
           </td>
+          <td>{{ getMediaType(item.format) }}</td>
           <td>{{ item.filename }}</td>
           <td>{{ item.url }}</td>
           <td>{{ formatDate(item.created_at) }}</td>
           <td>
-            <button @click="deleteImage(item.public_id)">删除</button>
+            <button @click="deleteMedia(item.public_id)">删除</button>
           </td>
         </tr>
       </tbody>
@@ -51,7 +62,7 @@
     </div>
 
     <div v-else class="status-message empty">
-      暂无图片数据
+      暂无媒体数据
     </div>
   </div>
 </template>
@@ -72,8 +83,27 @@ const handleFileUpload = (event) => {
   selectedFile.value = event.target.files[0]
 }
 
-// 上传图片
-const uploadImage = async () => {
+// 检查是否为图片
+const isImage = (format) => {
+  const imageFormats = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+  return imageFormats.includes(format?.toLowerCase())
+}
+
+// 检查是否为视频
+const isVideo = (format) => {
+  const videoFormats = ['mp4', 'webm', 'ogg', 'mov']
+  return videoFormats.includes(format?.toLowerCase())
+}
+
+// 获取媒体类型显示文本
+const getMediaType = (format) => {
+  if (isImage(format)) return '图片'
+  if (isVideo(format)) return '视频'
+  return '未知类型'
+}
+
+// 上传媒体文件
+const uploadMedia = async () => {
   if (!selectedFile.value) return
   
   uploading.value = true
@@ -83,9 +113,10 @@ const uploadImage = async () => {
     formData.append('file', selectedFile.value)
     formData.append('upload_preset', 'ml_default')
     formData.append('api_key', import.meta.env.VITE_CLOUDINARY_API_KEY)
+    formData.append('resource_type', 'auto') // 自动检测资源类型
 
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`,
       {
         method: 'POST',
         body: formData
@@ -99,15 +130,16 @@ const uploadImage = async () => {
       throw new Error(cloudinaryData.error.message)
     }
 
-    // 2. 将照片信息保存到 Supabase
+    // 2. 将媒体信息保存到 Supabase
     const { data: supabaseData, error: supabaseError } = await supabase
-      .from('images')
+      .from('media')
       .insert([
         {
           public_id: cloudinaryData.public_id,
           url: cloudinaryData.secure_url,
           filename: selectedFile.value.name,
-          format: cloudinaryData.format
+          format: cloudinaryData.format,
+          resource_type: cloudinaryData.resource_type
         }
       ])
       .select()
@@ -119,7 +151,7 @@ const uploadImage = async () => {
     console.log('保存到 Supabase 成功:', supabaseData)
 
     // 3. 刷新列表
-    await fetchImages()
+    await fetchMedia()
     
     // 4. 清理表单
     selectedFile.value = null
@@ -132,12 +164,12 @@ const uploadImage = async () => {
   }
 }
 
-// 获取图片列表
-const fetchImages = async () => {
+// 获取媒体列表
+const fetchMedia = async () => {
   loading.value = true
   try {
     const { data, error } = await supabase
-      .from('images')
+      .from('media')
       .select('*')
       .order('created_at', { ascending: false })
 
@@ -146,31 +178,29 @@ const fetchImages = async () => {
     }
 
     tableData.value = data
-    console.log('获取到的图片列表:', data)
+    console.log('获取到的媒体列表:', data)
   } catch (error) {
-    console.error('获取图片列表失败:', error)
-    alert('获取图片列表失败: ' + error.message)
+    console.error('获取媒体列表失败:', error)
+    alert('获取媒体列表失败: ' + error.message)
   } finally {
     loading.value = false
   }
 }
 
-// 删除图片
-const deleteImage = async (publicId) => {
+// 删除媒体
+const deleteMedia = async (publicId) => {
   try {
     // 1. 从 Cloudinary 删除
     const deleteResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/destroy`,
+      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/resources/image/upload/${publicId}`,
       {
-        method: 'POST',
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          public_id: publicId,
           api_key: import.meta.env.VITE_CLOUDINARY_API_KEY,
           timestamp: Math.round(new Date().getTime() / 1000),
-          // 这里需要生成签名，建议在后端处理
         })
       }
     )
@@ -180,7 +210,7 @@ const deleteImage = async (publicId) => {
 
     // 2. 从 Supabase 删除记录
     const { error: supabaseError } = await supabase
-      .from('images')
+      .from('media')
       .delete()
       .match({ public_id: publicId })
 
@@ -189,7 +219,7 @@ const deleteImage = async (publicId) => {
     }
 
     // 3. 刷新列表
-    await fetchImages()
+    await fetchMedia()
   } catch (error) {
     console.error('删除失败:', error)
     alert('删除失败: ' + error.message)
@@ -202,7 +232,7 @@ const formatDate = (dateString) => {
 }
 
 onMounted(() => {
-  fetchImages()
+  fetchMedia()
 })
 </script>
 
@@ -220,10 +250,16 @@ onMounted(() => {
 }
 
 .thumbnail {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
   border-radius: 4px;
+  background-color: #f0f0f0;
+}
+
+/* 视频预览样式 */
+video.thumbnail {
+  background-color: #000;
 }
 
 .status-message {
