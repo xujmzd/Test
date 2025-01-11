@@ -5,7 +5,8 @@ export const useTableStore = defineStore('table', {
   state: () => ({
     tableData: [],
     loading: false,
-    error: null
+    error: null,
+    connectionStatus: null
   }),
   
   actions: {
@@ -14,11 +15,9 @@ export const useTableStore = defineStore('table', {
       this.error = null
       
       try {
-        // 检查 Supabase 连接
-        if (!supabase) {
-          throw new Error('数据库连接未初始化')
-        }
-
+        console.log('开始获取数据...')
+        
+        // 直接获取数据
         const { data, error } = await supabase
           .from('test1')
           .select('*')
@@ -28,6 +27,7 @@ export const useTableStore = defineStore('table', {
         }
         
         this.tableData = data || []
+        console.log('获取到数据:', this.tableData)
         
         if (data && data.length === 0) {
           console.log('查询成功但无数据')
@@ -38,10 +38,12 @@ export const useTableStore = defineStore('table', {
         this.error = e.message || '数据加载失败'
         
         // 检查具体错误类型
-        if (e.message.includes('连接')) {
+        if (e.message.includes('connection')) {
           this.error = '无法连接到数据库，请检查网络连接'
-        } else if (e.message.includes('权限')) {
+        } else if (e.message.includes('permission')) {
           this.error = '没有访问权限，请检查数据库配置'
+        } else if (e.message.includes('relation "test1" does not exist')) {
+          this.error = '数据表 test1 不存在，请先创建表'
         }
       } finally {
         this.loading = false
