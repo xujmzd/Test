@@ -5,6 +5,16 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 5173,
-    open: true // 自动打开浏览器
+    open: true
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        format: 'es',
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name]-[hash].js',
+        assetFileNames: '[name].[ext]'
+      }
+    }
   }
 }) 

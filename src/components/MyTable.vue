@@ -3,10 +3,10 @@
     <h2>我的表格内容</h2>
     
     <!-- 环境信息 -->
-    <div v-if="import.meta.env.MODE === 'development'" class="env-info">
-      <p>当前环境: {{ import.meta.env.MODE }}</p>
-      <p>Supabase URL: {{ import.meta.env.VITE_SUPABASE_URL ? '已配置' : '未配置' }}</p>
-      <p>Supabase Key: {{ import.meta.env.VITE_SUPABASE_ANON_KEY ? '已配置' : '未配置' }}</p>
+    <div v-if="isDevelopment" class="env-info">
+      <p>当前环境: {{ currentMode }}</p>
+      <p>Supabase URL: {{ hasSupabaseUrl ? '已配置' : '未配置' }}</p>
+      <p>Supabase Key: {{ hasSupabaseKey ? '已配置' : '未配置' }}</p>
     </div>
     
     <!-- 加载状态 -->
@@ -47,12 +47,18 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTableStore } from '../stores/table'
 
 const store = useTableStore()
 const { tableData, loading, error } = storeToRefs(store)
+
+// 环境变量相关的计算属性
+const isDevelopment = computed(() => import.meta.env.MODE === 'development')
+const currentMode = computed(() => import.meta.env.MODE)
+const hasSupabaseUrl = computed(() => !!import.meta.env.VITE_SUPABASE_URL)
+const hasSupabaseKey = computed(() => !!import.meta.env.VITE_SUPABASE_ANON_KEY)
 
 const retryFetch = () => {
   store.fetchTableData()
@@ -66,6 +72,13 @@ onMounted(() => {
 <style scoped>
 .my-table {
   padding: 20px;
+}
+
+.env-info {
+  background-color: #f0f0f0;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 4px;
 }
 
 .status-message {
