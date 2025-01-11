@@ -29,7 +29,7 @@
       </thead>
       <tbody>
         <tr v-for="(item, index) in tableData" :key="index">
-          <td>
+          <td class="preview-cell">
             <!-- 图片预览 -->
             <img 
               v-if="isImage(item.format)"
@@ -38,18 +38,15 @@
               class="thumbnail"
             >
             <!-- 视频预览 -->
-            <video
-              v-else-if="isVideo(item.format)"
-              :src="item.url"
-              class="thumbnail"
-              controls
-              preload="metadata"
-              controlsList="nodownload"
-              playsinline
-            >
-              <source :src="item.url" :type="`video/${item.format}`">
-              您的浏览器不支持视频播放
-            </video>
+            <div v-else class="video-container">
+              <video
+                class="video-player"
+                controls
+                :src="item.url"
+              >
+                您的浏览器不支持视频播放
+              </video>
+            </div>
           </td>
           <td>{{ getMediaType(item.format) }}</td>
           <td>{{ item.filename }}</td>
@@ -74,7 +71,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { cloudinary } from '../cloudinary/client'
 import { supabase } from '../supabase/client'
 
@@ -83,6 +80,8 @@ const loading = ref(false)
 const selectedFile = ref(null)
 const uploading = ref(false)
 const fileInput = ref(null)
+const videoPlayer = ref([])
+const isPlaying = reactive({})  // 跟踪每个视频的播放状态
 
 // 处理文件选择
 const handleFileUpload = (event) => {
@@ -174,17 +173,20 @@ const uploadMedia = async () => {
 const fetchMedia = async () => {
   loading.value = true
   try {
+    console.log('开始获取媒体列表...')
     const { data, error } = await supabase
       .from('media')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
+      console.error('获取数据错误:', error)
       throw error
     }
 
-    tableData.value = data
-    console.log('获取到的媒体列表:', data)
+    console.log('获取到的数据:', data)
+    tableData.value = data || []
+    
   } catch (error) {
     console.error('获取媒体列表失败:', error)
     alert('获取媒体列表失败: ' + error.message)
@@ -237,8 +239,51 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString()
 }
 
+// 生成视频缩略图URL
+const generateThumbnail = (videoUrl) => {
+  // 使用 Cloudinary 的视频缩略图功能
+  return videoUrl.replace('/upload/', '/upload/w_400,h_300,c_fill,so_0/')
+}
+
+// 切换视频播放状态
+const togglePlay = (index) => {
+  const video = videoPlayer.value[index]
+  if (video) {
+    if (video.paused) {
+      // 停止所有其他视频
+      Object.keys(isPlaying).forEach(key => {
+        if (key !== index.toString()) {
+          const otherVideo = videoPlayer.value[key]
+          if (otherVideo && !otherVideo.paused) {
+            otherVideo.pause()
+            isPlaying[key] = false
+          }
+        }
+      })
+      // 播放当前视频
+      video.play()
+      isPlaying[index] = true
+    } else {
+      video.pause()
+      isPlaying[index] = false
+    }
+  }
+}
+
+// 监听视频结束事件
+const setupVideoListeners = () => {
+  videoPlayer.value.forEach((video, index) => {
+    if (video) {
+      video.addEventListener('ended', () => {
+        isPlaying[index] = false
+      })
+    }
+  })
+}
+
 onMounted(() => {
   fetchMedia()
+  setupVideoListeners()
 })
 </script>
 
@@ -339,5 +384,81 @@ button:hover:not(:disabled) {
 .empty {
   background-color: #fafafa;
   color: #666;
+}
+
+.preview-cell {
+  width: 320px;
+  padding: 10px;
+  text-align: center;
+}
+
+.video-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.video-player {
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+  border-radius: 4px;
+}
+
+/* 播放按钮覆盖层 */
+.play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.play-overlay:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.play-button {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.play-button:hover {
+  transform: scale(1.1);
+}
+
+.play-icon {
+  font-size: 24px;
+  color: #000;
+  margin-left: 5px; /* 稍微调整播放图标的位置 */
+}
+
+/* 视频控件样式 */
+video::-webkit-media-controls {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.video-container:hover video::-webkit-media-controls {
+  opacity: 1;
+}
+
+/* 确保视频有默认封面背景 */
+video[poster] {
+  object-fit: cover;
+  background-size: cover;
+  background-position: center;
 }
 </style> 
