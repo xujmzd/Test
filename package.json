@@ -1,7 +1,21 @@
 {
+  "name": "my-table-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.x.x",
+    "pinia": "^2.x.x",
+    "vue": "^3.x.x",
+    "vue-router": "^4.x.x"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.x.x",
+    "vite": "^4.x.x"
   }
 } 
