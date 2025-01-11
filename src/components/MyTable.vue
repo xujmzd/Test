@@ -43,7 +43,13 @@
               :src="item.url"
               class="thumbnail"
               controls
-            ></video>
+              preload="metadata"
+              controlsList="nodownload"
+              playsinline
+            >
+              <source :src="item.url" :type="`video/${item.format}`">
+              您的浏览器不支持视频播放
+            </video>
           </td>
           <td>{{ getMediaType(item.format) }}</td>
           <td>{{ item.filename }}</td>
@@ -91,8 +97,8 @@ const isImage = (format) => {
 
 // 检查是否为视频
 const isVideo = (format) => {
-  const videoFormats = ['mp4', 'webm', 'ogg', 'mov']
-  return videoFormats.includes(format?.toLowerCase())
+  const videoFormats = ['mp4', 'webm', 'ogg', 'mov', 'MP4', 'WEBM', 'OGG', 'MOV']
+  return videoFormats.includes(format)
 }
 
 // 获取媒体类型显示文本
@@ -250,8 +256,9 @@ onMounted(() => {
 }
 
 .thumbnail {
-  width: 150px;
-  height: 150px;
+  width: 200px;
+  height: auto;
+  max-height: 200px;
   object-fit: contain;
   border-radius: 4px;
   background-color: #f0f0f0;
@@ -260,6 +267,30 @@ onMounted(() => {
 /* 视频预览样式 */
 video.thumbnail {
   background-color: #000;
+  min-height: 150px;
+  display: block;
+}
+
+/* 视频控制器样式 */
+video::-webkit-media-controls {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+video::-webkit-media-controls-panel {
+  display: flex !important;
+  opacity: 1 !important;
+}
+
+/* 表格单元格样式 */
+td {
+  vertical-align: top;
+  padding: 12px !important;
+}
+
+/* 预览单元格样式 */
+td:first-child {
+  width: 220px;
+  text-align: center;
 }
 
 .status-message {
