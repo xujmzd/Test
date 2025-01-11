@@ -2,6 +2,13 @@
   <div class="my-table">
     <h2>我的表格内容</h2>
     
+    <!-- 环境信息 -->
+    <div v-if="import.meta.env.MODE === 'development'" class="env-info">
+      <p>当前环境: {{ import.meta.env.MODE }}</p>
+      <p>Supabase URL: {{ import.meta.env.VITE_SUPABASE_URL ? '已配置' : '未配置' }}</p>
+      <p>Supabase Key: {{ import.meta.env.VITE_SUPABASE_ANON_KEY ? '已配置' : '未配置' }}</p>
+    </div>
+    
     <!-- 加载状态 -->
     <div v-if="loading" class="status-message loading">
       <span class="spinner"></span>
